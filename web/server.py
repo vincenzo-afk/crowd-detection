@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.settings import API_HOST, API_PORT
+from config.settings import API_HOST, API_PORT, RECORDING_DIR
 
 # Shared state object injected from main pipeline
 _state: dict = {
@@ -44,8 +44,6 @@ if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
-RECORDING_DIR = os.path.join(BASE_DIR, "recordings")
-os.makedirs(RECORDING_DIR, exist_ok=True)
 app.mount("/recordings", StaticFiles(directory=RECORDING_DIR), name="recordings")
 
 

@@ -95,7 +95,7 @@
     #no-feed .nf-icon { font-size:48px; }
 
     /* ── Stat tiles ── */
-    .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
     .stat-tile {
       background: var(--bg-card2); border: 1px solid var(--border);
       border-radius: 10px; padding: 12px 14px;
@@ -184,6 +184,14 @@
     }
     .modal-box pre { font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; white-space: pre-wrap; color: var(--text-primary); }
     .modal-close { float: right; background: none; border: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; }
+
+    /* ── Replay modal ── */
+    #replay-modal {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    #replay-modal.open { display: flex; }
 
     /* ── Zone grid ── */
     #zone-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }

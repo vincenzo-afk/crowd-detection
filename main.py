@@ -39,7 +39,7 @@ from src.behavior_classifier import BehaviorClassifier
 from src.recorder import IncidentRecorder
 from src.restricted_zones import RestrictedZoneEnforcer
 from src.cluster_analysis import ClusterAnalyzer
-from web.server import update_state, start_server
+from web.server import update_state, get_state, start_server
 
 
 class CrowdSafetyPipeline:
@@ -153,7 +153,8 @@ class CrowdSafetyPipeline:
                 if self.sim_mode:
                     frame = self.simulator.render_blank_frame()
                     # Check for control commands from web
-                    sim_cmd = update_state.__globals__.get("_state", {}).pop("sim_cmd", None)
+                    state = get_state()
+                    sim_cmd = state.pop("sim_cmd", None)
                     if sim_cmd:
                         self.simulator.set_mode(sim_cmd)
                     raw_detections = self.simulator.step()
@@ -194,7 +195,8 @@ class CrowdSafetyPipeline:
                 if pressure_wave:
                     self.logger.log("PRESSURE_WAVE", "CRITICAL", "A dangerous crowd compression wave was detected propagating through the tracked area.")
                     
-                flow_vectors = self.movement.compute_flow_vectors(tracked)
+                # Compute flow vectors once with scale=4 for both classifier and rendering
+                flow_vectors = self.movement.compute_flow_vectors(tracked, scale=4)
                 behaviors = self.movement.detect_behaviors(tracked, avg_speed)
 
                 anomalies = self.behavior_cls.assess_anomalies(tracked, speeds, flow_vectors)
@@ -281,9 +283,8 @@ class CrowdSafetyPipeline:
                 # Zone grid
                 display = self.density.draw_zone_grid(display, zone_grid)
 
-                # Flow arrows
-                vectors = self.movement.compute_flow_vectors(tracked, scale=4)
-                display = self.movement.draw_flow_arrows(display, vectors)
+                # Flow arrows (reuse computed flow_vectors)
+                display = self.movement.draw_flow_arrows(display, flow_vectors)
 
                 # Social distance lines
                 display = self.social_dist.draw_violations(display, sd_violations)

@@ -47,6 +47,8 @@ class EventLogger:
         self._init_db()
         self._metric_buffer: List[dict] = []
         self._last_metric_flush = time.time()
+        self._cached_timeline: str = ""
+        self._last_timeline_update = 0.0
 
     def _init_db(self):
         try:
@@ -88,6 +90,10 @@ class EventLogger:
             data=data or {}
         )
         self.memory.appendleft(entry)
+        # Invalidate timeline cache when new alert is logged
+        if event_type in ("ALERT", "ZONE_VIOLATION", "BEHAVIOR", "LOST_CHILD", "DENSE_CLUSTER", "PRESSURE_WAVE"):
+            self._cached_timeline = ""
+            self._last_timeline_update = 0.0
         # Write to JSONL file
         try:
             with open(self.log_path, "a") as f:
@@ -135,7 +141,12 @@ class EventLogger:
         return [e.to_dict() for e in list(self.memory)[:n]]
 
     def generate_incident_timeline(self, session_name: str = "") -> str:
-        """Generate a plain-text incident timeline from memory."""
+        """Generate a plain-text incident timeline from memory. Cached for performance."""
+        now = time.time()
+        # Only regenerate if cache is invalid or older than 5 seconds
+        if self._cached_timeline and (now - self._last_timeline_update) < 5.0:
+            return self._cached_timeline
+            
         events = [e for e in self.memory
                   if e.level in ("WARNING", "DANGER", "CRITICAL")]
         events.sort(key=lambda x: x.timestamp)
@@ -158,7 +169,10 @@ class EventLogger:
         lines.append("─" * 60)
         lines.append(f"Total events logged: {len(self.memory)}")
         lines.append("=" * 60)
-        return "\n".join(lines)
+        
+        self._cached_timeline = "\n".join(lines)
+        self._last_timeline_update = now
+        return self._cached_timeline
 
     def export_csv(self) -> str:
         """Export metric history to CSV. Returns file path."""

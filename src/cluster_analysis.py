@@ -4,7 +4,7 @@ Detects tight clusters of people forming using spatial proximity (DBSCAN equival
 Flags clusters that are too tight (merging risk).
 """
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 import numpy as np
 
 from src.detector import Detection

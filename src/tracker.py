@@ -117,7 +117,8 @@ class MultiTracker:
         self.trackers: List[KalmanBoxTracker] = []
         self.frame_count = 0
         self.active_tracks: Dict[int, dict] = {}   # id → metadata
-        KalmanBoxTracker.count = 0
+        # Don't reset KalmanBoxTracker.count - use instance IDs instead
+        self._id_offset = KalmanBoxTracker.count
 
     def update(self, detections: List[Detection]) -> List[Detection]:
         """Update tracker with new detections. Returns detections annotated with track IDs."""

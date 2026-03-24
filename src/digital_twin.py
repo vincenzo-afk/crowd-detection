@@ -6,7 +6,6 @@ to the venue layout, and simulates simple forward-trajectories.
 
 from typing import List, Dict, Any
 from src.detector import Detection
-from config.settings import DEFAULT_SOURCE
 
 class DigitalTwin:
     def __init__(self, venue_name: str = "Main Hub", width: int = 1280, height: int = 720):

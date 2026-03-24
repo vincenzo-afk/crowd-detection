@@ -15,20 +15,31 @@ from src.detector import Detection
 class SocialDistanceMonitor:
     def __init__(self, min_distance_px: int = SOCIAL_DISTANCE_PX):
         self.min_distance = min_distance_px
-        self.total_violations = 0
+        self.session_violations = 0  # Total unique violations this session
         self.current_violations = 0
+        self._tracked_pairs = set()  # Track unique violating pairs
 
     def compute_violations(self, detections: List[Detection]) -> List[Tuple[Detection, Detection]]:
         """Returns pairs of detections that are too close."""
         violations = []
+        current_pairs = set()
+        
         for i in range(len(detections)):
             for j in range(i + 1, len(detections)):
                 a = detections[i]; b = detections[j]
                 dist = np.hypot(a.cx - b.cx, a.cy - b.cy)
                 if dist < self.min_distance:
                     violations.append((a, b))
+                    # Create unique pair ID
+                    pair_id = tuple(sorted([a.track_id, b.track_id]))
+                    current_pairs.add(pair_id)
+        
         self.current_violations = len(violations)
-        self.total_violations += len(violations)
+        # Only count new unique pairs not seen before
+        new_pairs = current_pairs - self._tracked_pairs
+        self.session_violations += len(new_pairs)
+        self._tracked_pairs = current_pairs
+        
         return violations
 
     def draw_violations(self, frame: np.ndarray,

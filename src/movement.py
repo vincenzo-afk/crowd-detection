@@ -4,6 +4,7 @@ Tracks per-person speed, crowd flow direction, flow vectors,
 and detects stampede pre-indicators.
 """
 
+from scipy.spatial.distance import cdist
 import numpy as np
 import cv2
 from collections import defaultdict, deque
@@ -114,7 +115,6 @@ class MovementAnalyzer:
             return False, 9999.0, False
             
         centers = np.array([(d.cx, d.cy) for d in detections], dtype=np.float32)
-        from scipy.spatial.distance import cdist
         dists = cdist(centers, centers)
         np.fill_diagonal(dists, np.inf)
         min_dists = dists.min(axis=1)
@@ -126,7 +126,7 @@ class MovementAnalyzer:
         # Checks if average distance is dropping sharply while staying within hazard bounds
         wave_detected = False
         if not hasattr(self, '_compression_history'):
-            self._compression_history = collections.deque(maxlen=10)
+            self._compression_history = deque(maxlen=10)
         self._compression_history.append(avg_min_dist)
         
         if len(self._compression_history) == self._compression_history.maxlen:
