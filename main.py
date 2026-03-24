@@ -12,6 +12,40 @@ import argparse
 import os
 import sys
 
+# Check for required dependencies
+def check_dependencies():
+    missing = []
+    try:
+        import cv2
+    except ImportError:
+        missing.append('opencv-python')
+    try:
+        import numpy
+    except ImportError:
+        missing.append('numpy')
+    try:
+        import scipy
+    except ImportError:
+        missing.append('scipy')
+    try:
+        import fastapi
+    except ImportError:
+        missing.append('fastapi')
+    
+    if missing:
+        print("\n" + "="*60)
+        print("  ERROR: Missing Required Dependencies")
+        print("="*60)
+        print(f"\nThe following packages are not installed: {', '.join(missing)}")
+        print("\nPlease run the setup script first:")
+        print("  ./setup.sh")
+        print("\nOr install manually:")
+        print(f"  pip install {' '.join(missing)}")
+        print("="*60 + "\n")
+        sys.exit(1)
+
+check_dependencies()
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config.settings import (
     DEFAULT_SOURCE, FRAME_WIDTH, FRAME_HEIGHT, TARGET_FPS,
