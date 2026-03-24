@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CrowdSafe Mobile HQ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #080b12; color: #fff; margin: 0; padding: 0; }
+    .header { padding: 16px; background: #0d1117; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e2535; }
+    .title { font-weight: 700; font-size: 16px; color: #00aaff; }
+    
+    .stream-container { width: 100%; aspect-ratio: 16/9; background: #000; }
+    #video { width: 100%; height: 100%; object-fit: contain; }
+    
+    .dashboard { padding: 16px; display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+    .tile { background: #111722; padding: 14px; border-radius: 12px; border: 1px solid #1e2535; }
+    .label { font-size: 11px; text-transform: uppercase; color: #7a8499; letter-spacing: 0.5px; }
+    .val { font-size: 22px; font-weight: 700; font-family: monospace; margin-top: 4px; }
+    
+    #alert-banner { grid-column: 1/-1; padding: 14px; border-radius: 12px; border: 1px solid #00c87a; background: rgba(0,200,122,0.1); color: #00c87a; font-weight: 600; }
+    #alert-msg { font-size: 12px; opacity: 0.8; margin-top: 4px; font-weight: 400; }
+    
+    .danger { background: rgba(255,109,0,0.15) !important; color: #ff6d00 !important; border-color: #ff6d00 !important; }
+    .critical { background: rgba(229,57,53,0.15) !important; color: #e53935 !important; border-color: #e53935 !important; animation: blink 1s infinite;}
+    @keyframes blink { 50% { opacity: 0.7; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">CrowdSafe HQ</div>
+    <div id="status" style="font-size: 12px; color: #00c87a;">● LIVE</div>
+  </div>
+  
+  <div class="stream-container">
+    <img id="video" src="/stream" alt="Stream loading...">
+  </div>
+
+  <div class="dashboard">
+    <div id="alert-banner">
+      <div id="alert-title">SAFE</div>
+      <div id="alert-msg">Normal operational boundaries.</div>
+    </div>
+    
+    <div class="tile">
+      <div class="label">Count</div>
+      <div class="val" id="stat-count">0</div>
+    </div>
+    <div class="tile">
+      <div class="label">Risk</div>
+      <div class="val" id="stat-risk">0%</div>
+    </div>
+    <div class="tile" style="grid-column: 1/-1;">
+      <div class="label">Primary Explainability Reason</div>
+      <div class="val" style="font-size: 14px;" id="stat-exp">Loading metrics...</div>
+    </div>
+  </div>
+
+  <script>
+    const ws = new WebSocket(`ws://${location.host}/ws`);
+    ws.onmessage = e => {
+      const d = JSON.parse(e.data);
+      document.getElementById('stat-count').textContent = d.metrics.count || 0;
+      document.getElementById('stat-risk').textContent = (d.risk_score || 0).toFixed(0) + '%';
+      
+      const banner = document.getElementById('alert-banner');
+      banner.className = '';
+      if(d.alert_level === 'DANGER') banner.className = 'danger';
+      if(d.alert_level === 'CRITICAL') banner.className = 'critical';
+      
+      document.getElementById('alert-title').textContent = d.alert_level + " STATUS";
+      document.getElementById('alert-msg').textContent = d.alert_feed && d.alert_feed[0] ? d.alert_feed[0].message : 'Monitoring.';
+      
+      if(d.metrics.explanation) {
+        document.getElementById('stat-exp').textContent = d.metrics.explanation.summary;
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CrowdSafe AI — Intelligent Crowd Safety & Stampede Prevention</title>
+  <meta name="description" content="Real-time AI-powered crowd monitoring dashboard for stampede prevention and crowd safety management."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-base: #080b12;
+      --bg-card: #0d1117;
+      --bg-card2: #111722;
+      --border: #1e2535;
+      --accent: #00aaff;
+      --accent2: #7c3aed;
+      --text-primary: #e8eaf0;
+      --text-secondary: #7a8499;
+      --safe: #00c87a;
+      --warning: #ffc107;
+      --danger: #ff6d00;
+      --critical: #e53935;
+      --radius: 12px;
+      --shadow: 0 4px 32px rgba(0,0,0,0.6);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg-base); color: var(--text-primary); font-family: 'Inter', sans-serif; font-size: 14px; overflow-x: hidden; }
+
+    /* ── Layout ── */
+    .app { display: grid; grid-template-rows: 56px 1fr; height: 100vh; }
+    .main-grid { display: grid; grid-template-columns: 1fr 280px; gap: 12px; padding: 12px; overflow: hidden; }
+    .left-col { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+    .right-col { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px;
+      background: linear-gradient(135deg, #0d1117 0%, #111722 100%);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      z-index: 10;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .logo-text { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, var(--accent), #a78bfa); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .logo-sub { font-size: 11px; color: var(--text-secondary); font-weight: 400; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .status-indicator { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--safe); animation: pulse 2s infinite; }
+    .dot.offline { background: #555; animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.3)} }
+    .uptime { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px;
+      transition: border-color .3s;
+    }
+    .card:hover { border-color: #2a3548; }
+    .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .card-title span { width: 3px; height: 12px; background: var(--accent); border-radius: 2px; display: inline-block; }
+
+    /* ── Alert level banner ── */
+    #alert-banner {
+      border-radius: var(--radius); padding: 10px 16px;
+      display: flex; align-items: center; gap: 12px;
+      font-weight: 700; font-size: 15px;
+      background: #0f1a0f; border: 1px solid var(--safe);
+      color: var(--safe); transition: all .4s ease;
+    }
+    #alert-banner .banner-icon { font-size: 22px; }
+    #alert-banner .banner-msg { font-size: 12px; font-weight: 400; color: inherit; opacity: 0.85; }
+    #alert-banner.warning { background: #1a160a; border-color: var(--warning); color: var(--warning); }
+    #alert-banner.danger { background: #1a0e04; border-color: var(--danger); color: var(--danger); }
+    #alert-banner.critical { background: #1a0404; border-color: var(--critical); color: var(--critical); animation: flashborder 0.7s infinite; }
+    @keyframes flashborder { 0%,100%{border-color:var(--critical)} 50%{border-color:transparent} }
+
+    /* ── Video feed ── */
+    #video-container {
+      position: relative; flex: 1; min-height: 0;
+      background: #050507; border-radius: var(--radius);
+      border: 1px solid var(--border); overflow: hidden;
+    }
+    #video-feed { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .video-overlay-label {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.7); color: var(--accent);
+      font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #no-feed { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--text-secondary); }
+    #no-feed .nf-icon { font-size:48px; }
+
+    /* ── Stat tiles ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .stat-tile {
+      background: var(--bg-card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); }
+    .stat-value { font-size: 26px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+    .stat-sub { font-size: 11px; color: var(--text-secondary); }
+    .stat-tile.safe .stat-value { color: var(--safe); }
+    .stat-tile.warning .stat-value { color: var(--warning); }
+    .stat-tile.danger .stat-value { color: var(--danger); }
+    .stat-tile.critical .stat-value { color: var(--critical); }
+    .stat-tile.accent .stat-value { color: var(--accent); }
+
+    /* ── Risk gauge ── */
+    .gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    #gauge-svg { transition: all .5s; }
+    .gauge-val { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+    .gauge-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
+
+    /* ── Bar component ── */
+    .bar-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .bar-header { display: flex; justify-content: space-between; }
+    .bar-name { font-size: 12px; color: var(--text-secondary); }
+    .bar-val { font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .bar-track { height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; background: var(--accent); }
+    .bar-fill.warn { background: var(--warning); }
+    .bar-fill.dang { background: var(--danger); }
+    .bar-fill.crit { background: var(--critical); }
+
+    /* ── Alert feed ── */
+    #alert-feed { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    #alert-feed::-webkit-scrollbar { width: 4px; }
+    #alert-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius:2px; }
+    .alert-item {
+      padding: 8px 10px; border-radius: 8px;
+      border-left: 3px solid; font-size: 12px;
+      background: rgba(255,255,255,0.03);
+      animation: slideIn .25s ease;
+    }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+    .alert-item.SAFE { border-color: var(--safe); }
+    .alert-item.WARNING { border-color: var(--warning); }
+    .alert-item.DANGER { border-color: var(--danger); }
+    .alert-item.CRITICAL { border-color: var(--critical); }
+    .alert-item-level { font-weight: 700; font-size: 11px; }
+    .alert-item-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-secondary); float: right; }
+    .alert-item-msg { color: var(--text-secondary); margin-top: 3px; line-height: 1.4; }
+
+    /* ── Forecast bars ── */
+    .horizon-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .horizon-label { font-size: 11px; color: var(--text-secondary); width: 40px; flex-shrink: 0; }
+    .horizon-bar { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .horizon-fill { height: 100%; border-radius: 4px; transition: width .6s ease, background .4s; }
+    .horizon-pct { font-size: 12px; font-weight: 600; width: 36px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+    /* ── Controls ── */
+    .ctrl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .btn {
+      padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg-card2); color: var(--text-primary);
+      font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all .2s; text-align: center;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,170,255,0.08); }
+    .btn.danger-btn { border-color: var(--danger); color: var(--danger); }
+    .btn.danger-btn:hover { background: rgba(255,109,0,0.12); }
+    .btn.critical-btn { border-color: var(--critical); color: var(--critical); }
+    .btn.critical-btn:hover { background: rgba(229,57,53,0.12); }
+    .btn.success-btn { border-color: var(--safe); color: var(--safe); }
+    .btn.success-btn:hover { background: rgba(0,200,122,0.1); }
+    .btn.full { grid-column: 1/-1; }
+
+    /* ── Timeline modal ── */
+    #timeline-modal {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    #timeline-modal.open { display: flex; }
+    .modal-box {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px; max-width: 700px; width: 95%;
+      max-height: 85vh; overflow-y: auto;
+    }
+    .modal-box pre { font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; white-space: pre-wrap; color: var(--text-primary); }
+    .modal-close { float: right; background: none; border: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; }
+
+    /* ── Zone grid ── */
+    #zone-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+    .zone-cell {
+      height: 32px; border-radius: 6px; border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; transition: background .4s;
+      background: var(--bg-card2);
+    }
+    .zone-cell.SAFE { background: rgba(0,200,122,0.15); border-color: rgba(0,200,122,0.4); color: var(--safe); }
+    .zone-cell.WARNING { background: rgba(255,193,7,0.15); border-color: rgba(255,193,7,0.4); color: var(--warning); }
+    .zone-cell.DANGER { background: rgba(255,109,0,0.2); border-color: rgba(255,109,0,0.5); color: var(--danger); }
+    .zone-cell.CRITICAL { background: rgba(229,57,53,0.25); border-color: rgba(229,57,53,0.6); color: var(--critical); }
+
+    /* ── Connection badge ── */
+    #conn-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: rgba(0,200,122,0.15); color: var(--safe); border: 1px solid rgba(0,200,122,0.3); }
+    #conn-badge.disconnected { background: rgba(100,100,100,0.15); color: var(--text-secondary); border-color: rgba(100,100,100,0.3); }
+
+    /* Scrollbar */
+    .right-col::-webkit-scrollbar { width: 4px; }
+    .right-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">👁️</div>
+      <div>
+        <div class="logo-text">CrowdSafe AI</div>
+        <div class="logo-sub">Intelligent Crowd Safety & Stampede Prevention System</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-indicator">
+        <div class="dot" id="live-dot"></div>
+        <span id="live-label">LIVE</span>
+      </div>
+      <div class="uptime" id="uptime-display">00:00:00</div>
+      <div id="conn-badge">Connected</div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <div class="main-grid">
+
+    <!-- LEFT COL -->
+    <div class="left-col">
+
+      <!-- Alert banner -->
+      <div id="alert-banner">
+        <span class="banner-icon">🟢</span>
+        <div>
+          <div id="banner-level">SYSTEM SAFE</div>
+          <div class="banner-msg" id="banner-msg">All metrics within normal parameters. Monitoring active.</div>
+        </div>
+      </div>
+
+      <!-- Stat tiles -->
+      <div class="stat-grid">
+        <div class="stat-tile accent">
+          <div class="stat-label">People Count</div>
+          <div class="stat-value" id="stat-count">0</div>
+          <div class="stat-sub" id="stat-occ">Occupancy: 0%</div>
+        </div>
+        <div class="stat-tile accent">
+          <div class="stat-label">Density</div>
+          <div class="stat-value" id="stat-density">0%</div>
+          <div class="stat-sub">Area coverage</div>
+        </div>
+        <div class="stat-tile accent">
+          <div class="stat-label">Avg Speed</div>
+          <div class="stat-value" id="stat-speed">0</div>
+          <div class="stat-sub" id="stat-speedmult">1.0x baseline</div>
+        </div>
+        <div class="stat-tile accent">
+          <div class="stat-label">Risk Score</div>
+          <div class="stat-value" id="stat-risk">0%</div>
+          <div class="stat-sub" id="stat-trend">Trend: stable</div>
+        </div>
+        <div class="stat-tile accent">
+          <div class="stat-label">Dir. Entropy</div>
+          <div class="stat-value" id="stat-entropy">1.0</div>
+          <div class="stat-sub">Flow coherence</div>
+        </div>
+        <div class="stat-tile accent">
+          <div class="stat-label">Acoustic SPL</div>
+          <div class="stat-value" id="stat-acoustic">0 dB</div>
+          <div class="stat-sub" id="stat-acoustic-lbl">Safe level</div>
+        </div>
+        <div class="stat-tile accent">
+          <div class="stat-label">Anomaly</div>
+          <div class="stat-value" id="stat-anomaly">0%</div>
+          <div class="stat-sub">Behavior score</div>
+        </div>
+      </div>
+
+      <!-- Video feed -->
+      <div id="video-container">
+        <img id="video-feed" src="/stream" alt="Live camera feed"
+             onerror="document.getElementById('no-feed').style.display='flex'; this.style.display='none'"/>
+        <div id="no-feed" style="display:none">
+          <div class="nf-icon">📷</div>
+          <div>Camera feed unavailable</div>
+          <div style="font-size:11px;color:#555">Start the main pipeline to begin</div>
+        </div>
+        <div class="video-overlay-label" id="camera-label">📡 CAMERA 1 — LIVE</div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COL -->
+    <div class="right-col">
+
+      <!-- Risk gauge -->
+      <div class="card">
+        <div class="card-title"><span></span>Risk Score</div>
+        <div class="gauge-wrap">
+          <svg id="gauge-svg" width="140" height="80" viewBox="0 0 140 80">
+            <path d="M 10 70 A 60 60 0 0 1 130 70" fill="none" stroke="#1e2535" stroke-width="10" stroke-linecap="round"/>
+            <path id="gauge-arc" d="M 10 70 A 60 60 0 0 1 130 70" fill="none" stroke="#00c87a" stroke-width="10" stroke-linecap="round"
+                  stroke-dasharray="188" stroke-dashoffset="188" style="transition:stroke-dashoffset .6s,stroke .4s"/>
+          </svg>
+          <div class="gauge-val" id="gauge-val">0%</div>
+          <div class="gauge-label" id="gauge-trend">Trend: stable →</div>
+        </div>
+      </div>
+
+      <!-- Forecast -->
+      <div class="card">
+        <div class="card-title"><span></span>Risk Forecast (LSTM)</div>
+        <div id="forecast-bars">
+          <div class="horizon-row">
+            <div class="horizon-label">+30s</div>
+            <div class="horizon-bar"><div class="horizon-fill" id="h30" style="width:0%"></div></div>
+            <div class="horizon-pct" id="h30v">0%</div>
+          </div>
+          <div class="horizon-row">
+            <div class="horizon-label">+60s</div>
+            <div class="horizon-bar"><div class="horizon-fill" id="h60" style="width:0%"></div></div>
+            <div class="horizon-pct" id="h60v">0%</div>
+          </div>
+          <div class="horizon-row">
+            <div class="horizon-label">+120s</div>
+            <div class="horizon-bar"><div class="horizon-fill" id="h120" style="width:0%"></div></div>
+            <div class="horizon-pct" id="h120v">0%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Explainability -->
+      <div class="card">
+        <div class="card-title"><span></span>AI Explainability</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px" id="exp-summary">Normal monitoring state.</div>
+        <div id="exp-reasons" style="display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+
+      <!-- Metric bars -->
+      <div class="card">
+        <div class="card-title"><span></span>Live Metrics</div>
+        <div class="bar-row">
+          <div class="bar-header"><span class="bar-name">Density</span><span class="bar-val" id="b-density">0%</span></div>
+          <div class="bar-track"><div class="bar-fill" id="bf-density" style="width:0%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-header"><span class="bar-name">Occupancy</span><span class="bar-val" id="b-occ">0%</span></div>
+          <div class="bar-track"><div class="bar-fill" id="bf-occ" style="width:0%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-header"><span class="bar-name">Speed Index</span><span class="bar-val" id="b-speed">0%</span></div>
+          <div class="bar-track"><div class="bar-fill" id="bf-speed" style="width:0%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-header"><span class="bar-name">Compression</span><span class="bar-val" id="b-comp">Low</span></div>
+          <div class="bar-track"><div class="bar-fill" id="bf-comp" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Zone grid -->
+      <div class="card">
+        <div class="card-title"><span></span>Zone Density Map</div>
+        <div id="zone-grid"></div>
+      </div>
+
+      <!-- Alert feed -->
+      <div class="card">
+        <div class="card-title"><span></span>Alert Feed</div>
+        <div id="alert-feed"><div style="color:var(--text-secondary);font-size:12px;text-align:center;padding:20px">No alerts yet. System monitoring...</div></div>
+      </div>
+
+      <!-- Controls -->
+      <div class="card">
+        <div class="card-title"><span></span>Simulation Controls</div>
+        <div class="ctrl-grid">
+          <button class="btn success-btn" onclick="ctrl('sim_normal')">🟢 Normal</button>
+          <button class="btn" onclick="ctrl('sim_building')">📈 Building</button>
+          <button class="btn danger-btn" onclick="ctrl('sim_dense')">🟠 Dense</button>
+          <button class="btn critical-btn" onclick="ctrl('sim_panic')">🔴 Panic!</button>
+          <button class="btn full" onclick="showTimeline()">📋 View Incident Timeline</button>
+          <button class="btn full" onclick="showReplays()">🎞️ View Incident Replays</button>
+        </div>
+      </div>
+
+      <!-- Multi-Camera Control -->
+      <div class="card">
+        <div class="card-title"><span></span>Multi-Camera Feed</div>
+        <div class="ctrl-grid">
+          <button class="btn" onclick="switchCam('CAM-1')">🎥 Camera 1</button>
+          <button class="btn" onclick="switchCam('CAM-2')">🎥 Camera 2</button>
+          <button class="btn" onclick="switchCam('DRONE-1')">🚁 Drone Feed</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Timeline Modal -->
+<div id="timeline-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeTimeline()">✕</button>
+    <h2 style="margin-bottom:16px;font-size:18px">Incident Timeline</h2>
+    <pre id="timeline-content" style="background:#111722; padding:12px; border-radius:6px; color:#a2aab8; font-size:13px; overflow-x:auto;">Loading...</pre>
+  </div>
+</div>
+
+<!-- Replay Modal -->
+<div id="replay-modal">
+  <div class="modal-box" style="max-width: 800px; width: 90%;">
+    <button class="modal-close" onclick="closeReplays()">✕</button>
+    <h2 style="margin-bottom:16px;font-size:18px">Incident Replays</h2>
+    <div id="replay-list" style="margin-bottom:16px; max-height: 150px; overflow-y: auto;">
+      Loading recordings...
+    </div>
+    <video id="replay-player" controls preload="metadata" style="width: 100%; border-radius: 8px; background: #000; border: 1px solid #333;">
+    </video>
+  </div>
+</div>
+
+<script>
+  const WS_URL = `ws://${location.host}/ws`;
+  let ws, reconnectTimer;
+  let uptimeStart = Date.now();
+  let alertLevel = "SAFE";
+
+  // ── WebSocket ──
+  function connect() {
+    ws = new WebSocket(WS_URL);
+    ws.onopen = () => {
+      document.getElementById("conn-badge").textContent = "Connected";
+      document.getElementById("conn-badge").classList.remove("disconnected");
+      document.getElementById("live-dot").classList.remove("offline");
+    };
+    ws.onmessage = e => update(JSON.parse(e.data));
+    ws.onclose = () => {
+      document.getElementById("conn-badge").textContent = "Reconnecting…";
+      document.getElementById("conn-badge").classList.add("disconnected");
+      document.getElementById("live-dot").classList.add("offline");
+      reconnectTimer = setTimeout(connect, 2000);
+    };
+    setInterval(() => { if(ws && ws.readyState===1) ws.send("ping"); }, 5000);
+  }
+
+  // ── Update UI ──
+  function update(data) {
+    const m = data.metrics || {};
+    alertLevel = data.alert_level || "SAFE";
+
+    // Alert banner
+    const banner = document.getElementById("alert-banner");
+    const icons = {SAFE:"🟢",WARNING:"⚠️",DANGER:"🟠",CRITICAL:"🔴"};
+    const msgs = {
+      SAFE:"All metrics within normal parameters.",
+      WARNING:"One or more metrics approaching threshold.",
+      DANGER:"Multiple metrics in danger zone — monitor closely.",
+      CRITICAL:"STAMPEDE RISK DETECTED — Immediate action required!"
+    };
+    banner.className = alertLevel.toLowerCase();
+    document.getElementById("banner-level").textContent = alertLevel + " — Crowd Safety Status";
+    document.getElementById("banner-msg").textContent = msgs[alertLevel]||"";
+    document.querySelector("#alert-banner .banner-icon").textContent = icons[alertLevel]||"🟢";
+
+    // Stat tiles
+    const count = m.count || 0;
+    const density = (m.density||0)*100;
+    const occ = (m.occupancy_pct||0)*100;
+    const speed = (m.avg_speed||0).toFixed(1);
+    const mult = (m.speed_multiplier||1).toFixed(2);
+    const risk = data.risk_score || 0;
+    const entropy = (m.direction_entropy??1).toFixed(2);
+
+    setStatTile("stat-count", count, alertLevel);
+    document.getElementById("stat-occ").textContent = `Occupancy: ${occ.toFixed(0)}%`;
+    setStatTile("stat-density", density.toFixed(0)+"%", densityLevel(density));
+    setStatTile("stat-speed", speed, "accent");
+    document.getElementById("stat-speedmult").textContent = `${mult}x baseline`;
+    setStatTile("stat-risk", risk.toFixed(0)+"%", alertLevel);
+    document.getElementById("stat-trend").textContent = `Trend: ${m.trend||"stable"}`;
+    setStatTile("stat-entropy", entropy, "accent");
+
+    const acDb = (m.acoustic_db||0).toFixed(0);
+    setStatTile("stat-acoustic", `${acDb} dB`, m.acoustic_panic ? "critical" : "accent");
+    document.getElementById("stat-acoustic-lbl").textContent = m.acoustic_panic ? "Panic detected" : "Safe level";
+
+    const anom = (m.anomaly_score||0).toFixed(0);
+    setStatTile("stat-anomaly", `${anom}%`, anom > 50 ? "warning" : "accent");
+
+    if (m.weather_risk_mult && m.weather_risk_mult > 1.0) {
+      document.getElementById("banner-msg").textContent += ` [Weather risk mutliplier: ${m.weather_risk_mult.toFixed(2)}x]`;
+    }
+
+    // Risk gauge
+    const arc = document.getElementById("gauge-arc");
+    const total = 188;
+    const fill = total - (risk/100)*total;
+    arc.style.strokeDashoffset = fill;
+    arc.style.stroke = riskColor(risk);
+    document.getElementById("gauge-val").textContent = risk.toFixed(0)+"%";
+    document.getElementById("gauge-val").style.color = riskColor(risk);
+    const trend = m.trend||"stable";
+    document.getElementById("gauge-trend").textContent =
+      trend==="rising"?"↑ Rising Risk" : trend==="falling"?"↓ Falling Risk" : "→ Stable";
+
+    // Forecast bars
+    const preds = data.predictions || {};
+    updateHorizon("h30","h30v",preds[30]||preds["30"]||0);
+    updateHorizon("h60","h60v",preds[60]||preds["60"]||0);
+    updateHorizon("h120","h120v",preds[120]||preds["120"]||0);
+
+    // Explainability
+    if (m.explanation) {
+      document.getElementById("exp-summary").textContent = m.explanation.summary || "Normal state.";
+      let rHtml = "";
+      for (const [key, pct] of Object.entries(m.explanation.contributions || {})) {
+        if (pct < 3) continue;
+        rHtml += `<div class="bar-row"><div class="bar-header"><span class="bar-name">${key}</span><span class="bar-val">${pct.toFixed(0)}%</span></div>` +
+                 `<div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div></div>`;
+      }
+      document.getElementById("exp-reasons").innerHTML = rHtml;
+    }
+
+    // Metric bars
+    updateBar("b-density","bf-density", density, density+"%");
+    updateBar("b-occ","bf-occ", occ, occ.toFixed(0)+"%");
+    const speedIdx = Math.min((m.speed_multiplier||1)-1, 3)*33;
+    updateBar("b-speed","bf-speed", speedIdx, `${mult}x`);
+    const compPct = m.compressed ? 100 : Math.min((m.avg_dist||999)/200*100, 100);
+    const compLabel = m.compressed ? "⚠ HIGH" : "Low";
+    document.getElementById("b-comp").textContent = compLabel;
+    updateBar(null,"bf-comp", m.compressed?85:compPct, null);
+
+    // Alert feed
+    renderAlertFeed(data.alert_feed||[]);
+
+    // Zone grid
+    renderZoneGrid(m.zone_grid||null);
+  }
+
+  function setStatTile(id, val, level) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = val;
+    const tile = el.closest(".stat-tile");
+    if (tile) {
+      tile.className = "stat-tile " + (level||"accent").toLowerCase();
+    }
+  }
+
+  function updateHorizon(barId, valId, pct) {
+    const bar = document.getElementById(barId);
+    const val = document.getElementById(valId);
+    bar.style.width = pct + "%";
+    bar.style.background = riskColor(pct);
+    val.textContent = pct.toFixed(0)+"%";
+    val.style.color = riskColor(pct);
+  }
+
+  function updateBar(labelId, barId, pct, label) {
+    if (labelId && label) document.getElementById(labelId).textContent = label;
+    const bar = document.getElementById(barId);
+    if (!bar) return;
+    bar.style.width = Math.min(pct,100)+"%";
+    bar.className = "bar-fill" + (pct>=75?" crit":pct>=50?" dang":pct>=30?" warn":"");
+  }
+
+  function renderAlertFeed(feed) {
+    const el = document.getElementById("alert-feed");
+    if (!feed || !feed.length) return;
+    el.innerHTML = feed.map(a => `
+      <div class="alert-item ${a.level}">
+        <span class="alert-item-level">${a.level}</span>
+        <span class="alert-item-time">${a.time_str||""}</span>
+        <div class="alert-item-msg">${a.message||""}</div>
+      </div>
+    `).join("");
+  }
+
+  function renderZoneGrid(grid) {
+    const el = document.getElementById("zone-grid");
+    if (!grid) {
+      el.innerHTML = Array(24).fill(0).map((_,i)=>
+        `<div class="zone-cell">Z${i+1}</div>`).join("");
+      return;
+    }
+    let html = "";
+    for (const row of grid)
+      for (const cell of row)
+        html += `<div class="zone-cell ${cell.risk}">${cell.count}</div>`;
+    el.innerHTML = html;
+  }
+
+  function riskColor(pct) {
+    if (pct >= 75) return "#e53935";
+    if (pct >= 50) return "#ff6d00";
+    if (pct >= 30) return "#ffc107";
+    return "#00c87a";
+  }
+
+  function densityLevel(pct) {
+    if (pct >= 75) return "critical";
+    if (pct >= 55) return "danger";
+    if (pct >= 30) return "warning";
+    return "safe";
+  }
+
+  // ── Controls ──
+  async function ctrl(action) {
+    await fetch(`/api/control/${action}`, {method:"POST"});
+  }
+
+  // ── Timeline ──
+  async function showTimeline() {
+    document.getElementById("timeline-modal").classList.add("open");
+    const res = await fetch("/api/timeline");
+    const data = await res.json();
+    document.getElementById("timeline-content").textContent = data.timeline || "No incidents yet.";
+  }
+  function closeTimeline() {
+    document.getElementById("timeline-modal").classList.remove("open");
+  }
+
+  // ── Replays ──
+  async function showReplays() {
+    document.getElementById("replay-modal").classList.add("open");
+    const res = await fetch("/api/recordings");
+    const data = await res.json();
+    const list = document.getElementById("replay-list");
+    if (!data.recordings || data.recordings.length === 0) {
+      list.innerHTML = "<div style='color:#777;'>No incidents recorded yet.</div>";
+    } else {
+      list.innerHTML = data.recordings.map(r => 
+        `<button class="btn" style="margin-bottom:4px; margin-right:4px;" onclick="document.getElementById('replay-player').src='/recordings/${r}'; document.getElementById('replay-player').play();">▶️ ${r}</button>`
+      ).join("");
+    }
+  }
+  function closeReplays() {
+    document.getElementById("replay-modal").classList.remove("open");
+    document.getElementById("replay-player").pause();
+    document.getElementById("replay-player").src = "";
+  }
+
+  // ── Multi-Camera ──
+  async function switchCam(cam_id) {
+    document.getElementById("camera-label").textContent = `📡 ${cam_id} — LIVE`;
+    await fetch(`/api/camera/${cam_id}`, {method: "POST"});
+  }
+
+  // ── Uptime ──
+  setInterval(() => {
+    const s = Math.floor((Date.now()-uptimeStart)/1000);
+    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;
+    document.getElementById("uptime-display").textContent =
+      `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  }, 1000);
+
+  // ── Poll fallback ──
+  async function pollStatus() {
+    try {
+      const r = await fetch("/api/status");
+      const d = await r.json();
+      // Only use poll data if WS is disconnected
+      if (!ws || ws.readyState !== 1) {
+        update({...d, metrics:{count:d.count,density:d.density}, alert_feed:[]});
+      }
+    } catch(e){}
+  }
+  setInterval(pollStatus, 3000);
+
+  // Init
+  connect();
+</script>
+</body>
+</html>
